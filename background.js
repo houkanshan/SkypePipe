@@ -1,5 +1,5 @@
 const apiUrl = 'https://client-s.gateway.messenger.live.com/v1/users/ME/endpoints/SELF/subscriptions/0/poll'
-const localUrl = 'http://localhost:12345/'
+const localUrl = 'http://127.0.0.1:12345/'
 const interval = 1000
 
 const pipeMessage = throttle((token) => {
