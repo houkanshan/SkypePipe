@@ -1,8 +1,8 @@
 const apiUrl = 'https://client-s.gateway.messenger.live.com/v1/users/ME/endpoints/SELF/subscriptions/0/poll'
-const localUrl = 'http://127.0.0.1:12345/'
-const interval = 1000
+const localUrl = 'http://localhost:12345/'
+const interval = 5000
 
-const pipeMessage = throttle((token) => {
+const pipeMessage = function (token) {
   fetch(apiUrl, {
     method: 'post',
     headers: {
@@ -15,54 +15,32 @@ const pipeMessage = throttle((token) => {
 
     console.log(data)
 
-    fetch(localUrl, {
+    return fetch(localUrl, {
       method: 'post',
       body: JSON.stringify(data),
     })
-
-    return data
   })
-}, interval)
+  .then(res => {
+    if (!res) {
+      console.info('Nothing returned.')
+      return
+    }
 
-function throttle (func, wait, options) {
-  var context, args, result
-  var timeout = null
-  var previous = 0
-  options = options || {}
-  var later = function() {
-    previous = options.leading === false ? 0 : Date.now()
-    timeout = null
-    result = func.apply(context, args)
-    context = args = null
-  }
-  return function() {
-    var now = Date.now()
-    if (!previous && options.leading === false) {
-      previous = now
-    }
-    var remaining = wait - (now - previous)
-    context = this
-    args = arguments
-    if (remaining <= 0) {
-      clearTimeout(timeout)
-      timeout = null
-      previous = now
-      result = func.apply(context, args)
-      context = args = null
-    } else if (!timeout && options.trailing !== false) {
-      timeout = setTimeout(later, remaining)
-    }
-    return result
-  }
+    res.payload.clientmessageid = Date.now() + ''
+
+    fetch(res.url, {
+      method: 'post',
+      headers: { [token.name]: token.value },
+      body: JSON.stringify(res.payload)
+    })
+  }, err => console.error.bind(console))
 }
 
-
+const tokenField = {}
 chrome.webRequest.onBeforeSendHeaders.addListener(
   function(info) {
     if (!info.requestHeaders) { return }
     if (info.tabId < 0) { return } // Sent by me.
-
-    const tokenField = {}
 
     const isMsgReq = info.requestHeaders.some((field, index) => {
       if (field.name.toLowerCase() === 'registrationtoken') {
@@ -84,3 +62,13 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
   // feature flag
   ['requestHeaders', 'blocking']
 )
+
+setTimeout(function poll() {
+  if (Object.keys(tokenField).length) {
+    pipeMessage(tokenField)
+  } else {
+    console.info('Skype online isnt connected')
+  }
+
+  setTimeout(poll, interval)
+}, interval)
