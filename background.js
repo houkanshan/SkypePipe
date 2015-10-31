@@ -20,6 +20,7 @@ const pipeMessage = function (token) {
       body: JSON.stringify(data),
     })
   })
+  .then(r => r.json())
   .then(res => {
     if (!res) {
       console.info('Nothing returned.')
